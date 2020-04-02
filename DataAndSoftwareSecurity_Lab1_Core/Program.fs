@@ -164,7 +164,7 @@ let SApply (s: int list list) (key:string) =
     let column = Convert.ToInt32 ( key.Substring(1, key.Length - 2 - 1 + 1), 2)
 
     let output = Convert.ToString(s.[row].[column], 2)
-    
+ 
     ensureLength 4 output |> seqToString
 
 let sbox key = 
@@ -189,10 +189,9 @@ let P = [
 let permuteP = permute P
 
 let func block key = 
-    let expanded = expand block
-    let xored = key |> xor <| expanded
-    let output = (sbox >> permuteP) xored
-    output
+    expand block
+    |> xor key
+    |> (sbox >> permuteP)    
     
 let IPminus1 = [
    40;08;48;16;56;24;64;32;
