@@ -59,10 +59,8 @@ let PC2 = [14;17;11;24;01;05
 let permutePC2 = permute PC2
 
 let charToHexString c = 
-    let mutable converted = Convert.ToString(int c, 2)
-    while converted.Length < 8 do 
-        converted <- "0" + converted
-    converted
+    Convert.ToString(int c, 2)
+    |> ensureLength 8 
 
 let textToBinary (msg:string) = 
     msg 
