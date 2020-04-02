@@ -5,10 +5,12 @@ open System.Text
 
 let seqToString = Seq.toArray >> String 
 
+let padTimes n = Seq.append (Seq.replicate n '0')
+
 let ensureLength length seq = 
     match length - Seq.length seq with
     | 0 -> seq
-    | a -> Seq.append (Seq.replicate a '0') seq  
+    | a -> padTimes a seq  
     
 let hexToB hex = Convert.ToString(System.Uri.FromHex(hex),2) |> ensureLength 4 |> seqToString
 
@@ -22,16 +24,15 @@ let permute table (key:string) =
     |> Seq.map (fun i -> key.[i - 1])
     |> Seq.toArray |> String
         
-let PC1 =  [
-           57;49;41;33;25;17;09;
+let PC1 =  [57;49;41;33;25;17;09;
            01;58;50;42;34;26;18;
            10;02;59;51;43;35;27;
            19;11;03;60;52;44;36;
            63;55;47;39;31;23;15;
            07;62;54;46;38;30;22;
            14;06;61;53;45;37;29;
-           21;13;05;28;20;12;04
-           ]
+           21;13;05;28;20;12;04]
+           
 let permutePC1 = permute PC1
 
 let halfOf f (key:string) = f (key.Length / 2) key |> seqToString         
@@ -63,8 +64,7 @@ let PC2 = [14;17;11;24;01;05
            41;52;31;37;47;55
            30;40;51;45;33;48
            44;49;39;56;34;53
-           46;42;50;36;29;32
-           ]
+           46;42;50;36;29;32]
     
 let permutePC2 = permute PC2
 
@@ -72,22 +72,19 @@ let charToHexString c =
     let mutable converted = Convert.ToString(int c, 2)
     while converted.Length < 8 do 
         converted <- "0" + converted
-    converted
-        
+    converted        
 
 let textToBinary (msg:string) = 
     msg 
     |> Seq.map charToHexString    
     |> Seq.reduce (+)
 
-let padded binary =
-    if String.length binary % 64 = 0
-        then binary
-        else
-            let mutable result = binary + "0000110100001010" // CRLN // 0D0A
-            while result.Length % 64 > 0 do
-                result <- result + "0"
-            result
+let CRLN = "0000110100001010"
+
+let padded binary = 
+    match String.length binary % 64 with
+    | 0 -> binary
+    | a -> padTimes ((binary + CRLN).Length % 64) (binary + CRLN) |> seqToString             
 
 let IP = [58;50;42;34;26;18;10;02;
           60;52;44;36;28;20;12;04;
@@ -107,8 +104,7 @@ let EBit = [32;01;02;03;04;05;
             16;17;18;19;20;21;
             20;21;22;23;24;25;
             24;25;26;27;28;29;
-            28;29;30;31;32;01
-          ]
+            28;29;30;31;32;01]
 
 let expand = permute EBit
 
