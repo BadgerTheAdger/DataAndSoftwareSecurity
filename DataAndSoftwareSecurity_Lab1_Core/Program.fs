@@ -16,7 +16,7 @@ let hexToB hex = Convert.ToString(System.Uri.FromHex(hex),2) |> ensureLength 4 |
 let toBinary hexkey =
     hexkey 
     |> Seq.map (fun i -> hexToB i)
-    |> Seq.reduce (+)
+    |> Seq.concat |> seqToString
                  
 let permute table (key:string) =
     table
@@ -67,7 +67,7 @@ let charToHexString c =
 let textToBinary (msg:string) = 
     msg 
     |> Seq.map charToHexString    
-    |> Seq.reduce (+)
+    |> Seq.concat |> seqToString
 
 let CRLN = "0000110100001010"
 
