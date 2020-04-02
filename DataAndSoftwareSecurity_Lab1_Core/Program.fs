@@ -1,7 +1,6 @@
 ﻿// Learn more about F# at http://fsharp.org
 
 open System
-open System.Text
 
 let seqToString = Seq.toArray >> String 
 
@@ -35,27 +34,18 @@ let PC1 =  [57;49;41;33;25;17;09;
            
 let permutePC1 = permute PC1
 
-let halfOf f (key:string) = f (key.Length / 2) key |> seqToString         
+let halfOf f (key:string) = f (key.Length / 2) key |> seqToString
 let leftOf = halfOf Seq.take
 let rightOf = halfOf Seq.skip
  
 let inline shiftToLeft times seq =
-    Seq.append (Seq.skip times seq) (Seq.take times seq)     
+    Seq.append (Seq.skip times seq) (Seq.take times seq)
 
-let inline leftShiftingIteration key =
-    let shiftAmounts = [1;1;2;2;2;2;2;2;1;2;2;2;2;2;2;1]
-    let shiftedKeys = Array.init<string> 16 (fun _ -> null)
-    shiftedKeys.[0] <- (shiftToLeft 1 key) |> seqToString   
-    for i in 1..15 do
-        shiftedKeys.[i] <- (shiftToLeft shiftAmounts.[i] shiftedKeys.[i - 1]) |> seqToString
-                    
-    shiftedKeys
-
-let inline leftShiftingIteration2 (key:seq<char>) = // key - starting value (state), shiftAmounts - seq, current - shiftamounts[9] 
-    let shiftAmounts = [1;1;2;2;2;2;2;2;1;2;2;2;2;2;2;1]
-    Seq.scan (fun acc elem1 -> shiftToLeft elem1 acc) key shiftAmounts 
-    |> Seq.tail |> Seq.map seqToString |> Seq.toArray
-
+let inline leftShiftingIteration (key:seq<char>) = 
+    [1;1;2;2;2;2;2;2;1;2;2;2;2;2;2;1]
+    |> Seq.scan (fun acc elem1 -> shiftToLeft elem1 acc) key
+    |> Seq.tail 
+    |> Seq.map seqToString |> Seq.toArray
 
 let PC2 = [14;17;11;24;01;05
            03;28;15;06;21;10
@@ -72,7 +62,7 @@ let charToHexString c =
     let mutable converted = Convert.ToString(int c, 2)
     while converted.Length < 8 do 
         converted <- "0" + converted
-    converted        
+    converted
 
 let textToBinary (msg:string) = 
     msg 
@@ -84,7 +74,7 @@ let CRLN = "0000110100001010"
 let padded binary = 
     match String.length binary % 64 with
     | 0 -> binary
-    | a -> padTimes ((binary + CRLN).Length % 64) (binary + CRLN) |> seqToString             
+    | _ -> padTimes ((binary + CRLN).Length % 64) (binary + CRLN) |> seqToString
 
 let IP = [58;50;42;34;26;18;10;02;
           60;52;44;36;28;20;12;04;
@@ -171,7 +161,7 @@ let S8 = [
 
 let Ss = [S1;S2;S3;S4;S5;S6;S7;S8]    
 
-let SApply (s: int list list) (key:string) =   
+let SApply (s: int list list) (key:string) =
     let row = Convert.ToInt32( (key.[0].ToString() + key.[key.Length - 1].ToString()), 2 )
     let column = Convert.ToInt32 ( key.Substring(1, key.Length - 2 - 1 + 1), 2)
 
@@ -180,12 +170,12 @@ let SApply (s: int list list) (key:string) =
     ensureLength 4 output |> seqToString
 
 let sbox key = 
-    let mutable chunks = Seq.chunkBySize 6 key |> Seq.map (fun i -> String i) |> Seq.toArray 
-
-    for i in 0..chunks.Length-1 do 
-        chunks.[i] <- SApply Ss.[i] chunks.[i]
-    
-    chunks |> Seq.reduce (+)
+    key 
+    |> Seq.chunkBySize 6 
+    |> Seq.map (fun i -> String i) |> Seq.toArray 
+    |> Seq.zip Ss  
+    |> Seq.map (fun (sbox, chunk) -> SApply sbox chunk)
+    |> Seq.concat |> seqToString
 
 let P = [
    16;07;20;21;
@@ -224,8 +214,8 @@ let encrypt key message =
     let permuted = permutePC1 binaryKey
     let leftHalf = leftOf permuted
     let rightHalf = rightOf permuted
-    let shiftsL = leftShiftingIteration2 leftHalf
-    let shiftsR = leftShiftingIteration2 rightHalf
+    let shiftsL = leftShiftingIteration leftHalf
+    let shiftsR = leftShiftingIteration rightHalf
     let keysK = Seq.zip shiftsL shiftsR 
                 |> Seq.map (fun (x,y) -> x+y) |> Seq.map (fun i -> permutePC2 i)
                 |> Seq.toArray
