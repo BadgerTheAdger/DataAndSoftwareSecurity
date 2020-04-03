@@ -4,16 +4,17 @@ open System
 
 let seqToString = Seq.toArray >> String 
 
-let padTimes n = Seq.append (Seq.replicate n '0')
+let padAtStart n = Seq.append (Seq.replicate n '0')
+let padAtEnd n coll = Seq.append coll (Seq.replicate n '0')
 
 let ensureLength length seq = 
     match length - Seq.length seq with
     | 0 -> seq
-    | a -> padTimes a seq  
+    | a -> padAtStart a seq  
     
 let hexToB hex = Convert.ToString(System.Uri.FromHex(hex),2) |> ensureLength 4 |> seqToString
 
-let toBinary hexkey =
+let hexToBinary hexkey =
     hexkey 
     |> Seq.map (fun i -> hexToB i)
     |> Seq.concat |> seqToString
@@ -74,7 +75,7 @@ let CRLN = "0000110100001010"
 let padded binary = 
     match String.length binary % 64 with
     | 0 -> binary
-    | _ -> padTimes ((binary + CRLN).Length % 64) (binary + CRLN) |> seqToString
+    | _ -> padAtEnd (64 - (binary + CRLN).Length % 64) (binary + CRLN) |> seqToString
 
 let IP = [58;50;42;34;26;18;10;02;
           60;52;44;36;28;20;12;04;
@@ -216,20 +217,29 @@ let inline getShifts key =
     leftShiftingIteration a, leftShiftingIteration b
 
 let step1 key isDecryption = 
-        let shiftsL, shiftsR = key |> toBinary |> permutePC1 |> getShifts
+        let shiftsL, shiftsR = key |> hexToBinary |> permutePC1 |> getShifts
 
         Seq.zip shiftsL shiftsR
             |> Seq.map (fun (x,y) -> x+y |> permutePC2)
             |> (if isDecryption then (Seq.rev >> Seq.toArray) else Seq.toArray)            
 
-let step2 keysK = toBinary >> padded >> permuteIP >> split >> (applyKeys keysK) >> reversed >> permuteIPminus1
+
+let blockAction keysK = permuteIP >> split >> (applyKeys keysK) >> reversed >> permuteIPminus1
+
+let step2 keysK message =
+        message 
+        |> textToBinary 
+        |> Seq.chunkBySize 64
+        |> Seq.map (String >> padded)
+        |> Seq.map (fun i -> blockAction keysK (seqToString i))
 
 let encrypt key isDecryption message =       
-    let keysK = step1 key isDecryption    
+    let keysK = step1 key isDecryption        
     step2 keysK message 
         
 [<EntryPoint>]
 let main argv = 
-    encrypt "133457799BBCDFF1" false "85E813540F0AB405"
+    encrypt "133457799BBCDFF1" false "Hello!"
+    |> Seq.concat |> seqToString
     |> printfn "%s"
     0 // return an integer exit code    
