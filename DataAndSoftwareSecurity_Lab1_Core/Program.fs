@@ -47,6 +47,8 @@ let inline leftShiftingIteration (key:seq<char>) =
     |> Seq.tail 
     |> Seq.map seqToString |> Seq.toArray
 
+let split s = (leftOf s, rightOf s)
+
 let PC2 = [14;17;11;24;01;05
            03;28;15;06;21;10
            23;19;12;04;26;08
@@ -206,35 +208,28 @@ let IPminus1 = [
 
 let permuteIPminus1 = permute IPminus1
    
-let encrypt key message =
-    let binaryKey = key |> toBinary    
-    let permuted = permutePC1 binaryKey
-    let leftHalf = leftOf permuted
-    let rightHalf = rightOf permuted
-    let shiftsL = leftShiftingIteration leftHalf
-    let shiftsR = leftShiftingIteration rightHalf
-    let keysK = Seq.zip shiftsL shiftsR 
-                |> Seq.map (fun (x,y) -> x+y) |> Seq.map (fun i -> permutePC2 i)
-                |> Seq.toArray
-    
-    // step 2
-    let permutedMsg = (toBinary >> padded >> permuteIP) message  // textToBinary
-    let mutable leftHalf1 = leftOf permutedMsg
-    let mutable rightHalf1 = rightOf permutedMsg
-    
-    for i in 0..15 do
-        let newRightHalf = leftHalf1 |> xor <| func rightHalf1 keysK.[i]
-        leftHalf1 <- rightHalf1 
-        rightHalf1 <- newRightHalf
-    
-    let reversed = rightHalf1 + leftHalf1
-    let permuted1 = permuteIPminus1 reversed
+let inline applyKeys keysK (left,right) = Seq.fold (fun (l,r) key -> (r, xor l (func r key))) (left,right) keysK
+let inline reversed (a,b) = b + a
 
-    permuted1
+let inline getShifts key = 
+    let (a,b) = split key
+    leftShiftingIteration a, leftShiftingIteration b
 
-   
+let step1 key isDecryption = 
+        let shiftsL, shiftsR = key |> toBinary |> permutePC1 |> getShifts
+
+        Seq.zip shiftsL shiftsR
+            |> Seq.map (fun (x,y) -> x+y |> permutePC2)
+            |> (if isDecryption then (Seq.rev >> Seq.toArray) else Seq.toArray)            
+
+let step2 keysK = toBinary >> padded >> permuteIP >> split >> (applyKeys keysK) >> reversed >> permuteIPminus1
+
+let encrypt key isDecryption message =       
+    let keysK = step1 key isDecryption    
+    step2 keysK message 
+        
 [<EntryPoint>]
 let main argv = 
-    encrypt "133457799BBCDFF1" "0123456789ABCDEF"
+    encrypt "133457799BBCDFF1" false "85E813540F0AB405"
     |> printfn "%s"
     0 // return an integer exit code    
