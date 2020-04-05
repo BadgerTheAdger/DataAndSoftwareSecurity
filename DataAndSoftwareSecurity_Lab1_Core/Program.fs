@@ -2,25 +2,44 @@
 
 open System
 
+module formatting = 
+    let padAtStart n = Seq.append (Seq.replicate n '0')
+
+    let ensureLength length seq =
+        let diff = length - (Seq.length seq) in
+            if diff = 0 then seq
+            else padAtStart diff seq            
+
+    let hexToB hex = Convert.ToString(System.Uri.FromHex(hex),2) |> ensureLength 4
+
+    let hexToBinary hexkey =
+        hexkey 
+        |> Seq.map (fun i -> hexToB i)
+        |> Seq.concat
+
+    let charSize = 16
+    
+    let charToBinaryString c = 
+        Convert.ToString(int c, 2)
+        |> ensureLength charSize 
+
+    let textToBinary (msg:seq<char>) = 
+        msg 
+        |> Seq.map charToBinaryString    
+        |> Seq.concat
+
+    let binaryToText a =
+        if Seq.length a % charSize <> 0 then raise (new ArgumentException( (Seq.length >> string) a ))
+        
+        Seq.chunkBySize charSize a
+        |> Seq.map (fun chunk -> Convert.ToInt32(chunk |> String, 2) |> Convert.ToChar)                 
+
 module cryptography = 
 
     let seqToString = Seq.toArray >> String 
     
-    let padAtStart n = Seq.append (Seq.replicate n '0')
     let padAtEnd n coll = Seq.append coll (Seq.replicate n '0')
-    
-    let ensureLength length seq = 
-        match length - Seq.length seq with
-        | 0 -> seq
-        | a -> padAtStart a seq  
-        
-    let hexToB hex = Convert.ToString(System.Uri.FromHex(hex),2) |> ensureLength 4 |> seqToString
-    
-    let hexToBinary hexkey =
-        hexkey 
-        |> Seq.map (fun i -> hexToB i)
-        |> Seq.concat |> seqToString
-                     
+                         
     let permute table (key:string) =
         table
         |> Seq.map (fun i -> key.[i - 1])
@@ -61,24 +80,15 @@ module cryptography =
                44;49;39;56;34;53
                46;42;50;36;29;32]
         
-    let permutePC2 = permute PC2
-    
-    let charToBinaryString c = 
-        Convert.ToString(int c, 2)
-        |> ensureLength 8 
-    
-    let textToBinary (msg:string) = 
-        msg 
-        |> Seq.map charToBinaryString    
-        |> Seq.concat |> seqToString
+    let permutePC2 = permute PC2       
     
     [<Literal>]
     let CRLN = "0000110100001010"
     
-    let padded binary = 
-        match String.length binary % 64 with
-        | 0 -> binary
-        | _ -> padAtEnd (64 - (binary + CRLN).Length % 64) (binary + CRLN) |> seqToString
+    let padded contents = 
+        match String.length contents % 64 with
+        | 0 -> contents
+        | _ -> padAtEnd (64 - (contents + CRLN).Length % 64) (contents + CRLN) |> seqToString
     
     let IP = [58;50;42;34;26;18;10;02;
               60;52;44;36;28;20;12;04;
@@ -171,7 +181,7 @@ module cryptography =
     
         let output = Convert.ToString(s.[row].[column], 2)
      
-        ensureLength 4 output |> seqToString
+        formatting.ensureLength 4 output |> seqToString
     
     let sbox key = 
         key 
@@ -220,17 +230,16 @@ module cryptography =
         leftShiftingIteration a, leftShiftingIteration b
     
     let step1 key isDecryption = 
-            let shiftsL, shiftsR = key |> hexToBinary |> permutePC1 |> getShifts
+            let shiftsL, shiftsR = key |> permutePC1 |> getShifts
     
             Seq.zip shiftsL shiftsR
                 |> Seq.map (fun (x,y) -> x+y |> permutePC2)
                 |> (if isDecryption then (Seq.rev >> Seq.toArray) else Seq.toArray)            
-    
-    
+        
     let blockAction keysK = permuteIP >> split >> (applyKeys keysK) >> reversed >> permuteIPminus1
     
-    let step2 keysK binaryMessage =
-            binaryMessage         
+    let step2 keysK content =
+            content         
             |> Seq.chunkBySize 64
             |> Seq.map (String >> padded)
             |> Seq.map (fun i -> blockAction keysK (seqToString i))
@@ -240,23 +249,16 @@ module cryptography =
         match a.LastIndexOf(CRLN) with
         | -1 -> a
         | x -> if Seq.forall (fun i -> i = '0') (Seq.skip (x + CRLN.Length) a) then a.Substring(0,x) else a
-    
-    let binaryToText (a:string) =
-        if Seq.length a % 8 <> 0 then raise (new ArgumentException(a))
-        
-        Seq.chunkBySize 8 a
-        |> Seq.map (fun chunk -> Convert.ToInt32(chunk |> seqToString, 2) |> Convert.ToChar)
-        |> seqToString        
-    
-    let encrypt key isDecryption message =       
-        let keysK = step1 key isDecryption        
-        let processed = step2 keysK (if isDecryption then message else textToBinary message)
+               
+    let encrypt binaryKey isDecryption content =       
+        let keysK = step1 binaryKey isDecryption
+        let processed = step2 keysK content
         if isDecryption 
-        then removePadding processed |> binaryToText
-        else processed
+            then removePadding processed
+            else processed
         
 [<EntryPoint>]
 let main argv = 
-    cryptography.encrypt "133457799BBCDFF1" true "100100110101100001110011010100010111000001001011000110011010101011011110001110111101011011100100011000111010001100001101101100110011110011011100011011111001010100000111010010110101011010001111"
-    |> printfn "%s"
+    formatting.textToBinary("а")
+    |> ignore
     0 // return an integer exit code    
