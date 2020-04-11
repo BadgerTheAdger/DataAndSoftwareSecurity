@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Formatting.fs" />
+    <Compile Include="Cryptography.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
