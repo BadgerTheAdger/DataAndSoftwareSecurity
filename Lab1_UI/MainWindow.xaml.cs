@@ -46,11 +46,11 @@ namespace Lab1_UI
         {
             if (isDecryption)
             {
-                return new string(formatting.binaryToText(cryptography.encrypt(key, isDecryption, text)).ToArray());
+                return new string(formatting.binaryToText(cryptography.decryptDES(key, text)).ToArray());
             }
             else
             {
-                return cryptography.encrypt(key, isDecryption, text);
+                return cryptography.encryptDES(key, text);
             }
         }
     }

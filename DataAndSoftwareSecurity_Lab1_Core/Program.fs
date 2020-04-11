@@ -229,12 +229,11 @@ module cryptography =
         let (a,b) = split key
         leftShiftingIteration a, leftShiftingIteration b
     
-    let step1 key isDecryption = 
+    let step1 key = 
             let shiftsL, shiftsR = key |> permutePC1 |> getShifts
     
             Seq.zip shiftsL shiftsR
                 |> Seq.map (fun (x,y) -> x+y |> permutePC2)
-                |> (if isDecryption then (Seq.rev >> Seq.toArray) else Seq.toArray)            
         
     let blockAction keysK = permuteIP >> split >> (applyKeys keysK) >> reversed >> permuteIPminus1
     
@@ -249,14 +248,18 @@ module cryptography =
         match a.LastIndexOf(CRLN) with
         | -1 -> a
         | x -> if Seq.forall (fun i -> i = '0') (Seq.skip (x + CRLN.Length) a) then a.Substring(0,x) else a
-               
-    let encrypt binaryKey isDecryption content =       
-        let keysK = step1 binaryKey isDecryption
-        let processed = step2 keysK content
-        if isDecryption 
-            then removePadding processed
-            else processed
+    
+    let encryptionOrder = Seq.toArray
+    let decryptionOrder = Seq.rev >> encryptionOrder
         
+    let DES ordering binaryKey content =
+        let keysK = step1 binaryKey |> ordering
+        let processed = step2 keysK content
+        processed
+    
+    let encryptDES key content = DES encryptionOrder key content
+    let decryptDES key content = (DES decryptionOrder key content) |> removePadding
+      
 [<EntryPoint>]
 let main argv = 
     formatting.textToBinary("а")
