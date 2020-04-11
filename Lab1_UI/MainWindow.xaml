@@ -32,8 +32,8 @@
             VerticalScrollBarVisibility="Visible"
             FontSize="30" Margin="10,87,1188,468">
         </TextBox>
-        <Button Name="Encrypt" FontSize="32" Content="Encrypt" Margin="303,670,1039,10" Click="Encrypt_Click"></Button>
-        <Button Name="Decrypt" Margin="10,670,1343,10" Content="Decrypt" FontSize="32" Click="Decrypt_Click"></Button>
+        <Button Name="Encrypt" FontSize="32" Content="Encrypt" Margin="303,670,1039,10" Click="Button_Click"></Button>
+        <Button Name="Decrypt" Margin="10,670,1343,10" Content="Decrypt" FontSize="32" Click="Button_Click"></Button>
         <TextBox
             x:Name="tbOutput"
             TextWrapping="Wrap"
